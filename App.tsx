@@ -1,10 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
+// import { onAuthStateChanged } from 'firebase/auth'; // Removed broken import
+import { onAuthStateChanged } from './services/storageService'; // Use mock implementation
+import { auth } from './services/firebase';
 import Layout from './components/Layout';
 import Auth from './components/Auth';
 import InteractionPage from './pages/InteractionPage';
 import HistoryPage from './pages/HistoryPage';
 import { User, AppRoute } from './types';
-import { getStoredUser, signOut } from './services/storageService';
+import { signOut } from './services/storageService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -13,23 +17,34 @@ const App: React.FC = () => {
   const [reusePrompt, setReusePrompt] = useState<string>('');
 
   useEffect(() => {
-    const storedUser = getStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-      setCurrentRoute(AppRoute.DASHBOARD);
-    }
-    setInit(false);
-  }, []);
+    // Real-time listener for Auth state using the mock service
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
+        });
+        // If we are on the Auth screen and user is detected, move to Dashboard
+        if (currentRoute === AppRoute.AUTH) {
+            setCurrentRoute(AppRoute.DASHBOARD);
+        }
+      } else {
+        setUser(null);
+        setCurrentRoute(AppRoute.AUTH);
+      }
+      setInit(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentRoute]);
 
   const handleLogin = (newUser: User) => {
-    setUser(newUser);
-    setCurrentRoute(AppRoute.DASHBOARD);
+    // onAuthStateChanged will handle the state update automatically
   };
 
   const handleLogout = async () => {
     await signOut();
-    setUser(null);
-    setCurrentRoute(AppRoute.AUTH);
   };
 
   const handleResend = (prompt: string) => {
@@ -37,7 +52,13 @@ const App: React.FC = () => {
     setCurrentRoute(AppRoute.DASHBOARD);
   };
 
-  if (init) return null; // Or a loading spinner
+  if (init) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+        </div>
+      );
+  }
 
   if (!user) {
     return <Auth onLogin={handleLogin} />;

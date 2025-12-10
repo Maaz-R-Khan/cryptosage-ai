@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signIn } from '../services/storageService';
+import { signIn, signUp } from '../services/storageService';
 import { User } from '../types';
 import { BrainCircuit } from './Icons';
 
@@ -9,19 +9,40 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) {
+        setError("Please enter both email and password.");
+        return;
+    }
     
     setLoading(true);
+    setError(null);
+    
     try {
-      const user = await signIn(email);
+      let user: User;
+      if (isRegistering) {
+        user = await signUp(email, password);
+      } else {
+        user = await signIn(email, password);
+      }
       onLogin(user);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/invalid-credential') {
+          setError("Invalid email or password.");
+      } else if (err.code === 'auth/email-already-in-use') {
+          setError("Email is already registered.");
+      } else if (err.code === 'auth/weak-password') {
+          setError("Password should be at least 6 characters.");
+      } else {
+          setError(err.message || "Authentication failed. Check console.");
+      }
     } finally {
       setLoading(false);
     }
@@ -56,6 +77,28 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             />
           </div>
 
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+              placeholder="••••••••"
+              minLength={6}
+            />
+          </div>
+
+          {error && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-sm text-rose-300">
+                {error}
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -74,17 +117,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
         <div className="mt-6 text-center">
           <button 
-            onClick={() => setIsRegistering(!isRegistering)}
+            onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError(null);
+            }}
             className="text-sm text-slate-500 hover:text-indigo-400 transition-colors"
           >
             {isRegistering ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
           </button>
-        </div>
-        
-        <div className="mt-8 pt-6 border-t border-slate-800 text-center">
-            <p className="text-xs text-slate-600">
-                This is a demo application. No password required.
-            </p>
         </div>
       </div>
     </div>
