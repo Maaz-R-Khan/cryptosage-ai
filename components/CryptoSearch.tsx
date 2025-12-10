@@ -66,8 +66,8 @@ const CryptoSearch: React.FC<CryptoSearchProps> = ({ selectedCryptos, onSelect }
   const displayResults = results.length > 0 ? results : topCryptos;
 
   return (
-    <div ref={searchRef} className="relative w-full z-20">
-      <div className="relative">
+    <div ref={searchRef} className="relative w-full">
+      <div className="relative z-10">
         <input
           type="text"
           value={searchQuery}
@@ -79,7 +79,7 @@ const CryptoSearch: React.FC<CryptoSearchProps> = ({ selectedCryptos, onSelect }
           placeholder="Search cryptocurrencies (BTC, ETH, SOL...)"
           className="w-full glass-card rounded-2xl px-6 py-4 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 smooth-transition"
         />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
           <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -88,7 +88,7 @@ const CryptoSearch: React.FC<CryptoSearchProps> = ({ selectedCryptos, onSelect }
 
       {/* Dropdown Results */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 glass-card rounded-2xl overflow-hidden max-h-96 overflow-y-auto animate-fade-in shadow-2xl">
+        <div className="absolute z-[100] w-full mt-2 glass-card rounded-2xl overflow-hidden max-h-96 overflow-y-auto animate-fade-in shadow-2xl border border-white/10">
           {loading ? (
             <div className="p-8 text-center text-white/60">Searching...</div>
           ) : displayResults.length === 0 ? (

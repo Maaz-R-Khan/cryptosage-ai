@@ -166,7 +166,7 @@ const InteractionPage: React.FC<InteractionPageProps> = ({ userId, initialPrompt
       </div>
 
       {/* Crypto Search */}
-      <div className="glass-card rounded-2xl p-6 animate-fade-in">
+      <div className="glass-card rounded-2xl p-6 animate-fade-in relative z-30">
         <h2 className="text-xl font-bold text-white mb-4">Select Cryptocurrencies</h2>
         <CryptoSearch
           selectedCryptos={selectedCryptos}

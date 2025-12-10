@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -f \"g:/code-playground/cryptosage-ai/.env\" ])",
+      "Bash(then echo \"exists\")",
+      "Bash(else echo \"does not exist\")",
+      "Bash(fi)"
+    ]
+  }
+}

@@ -1,13 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CryptoData, AnalysisResult } from "../types";
 
-// Initialize the Gemini client with strong guards
-const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || "";
-if (!apiKey) {
-  console.error("GEMINI_API_KEY is missing. Set it in your .env file.");
-}
+// Lazy initialization function to get API client
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || "";
 
-const ai = new GoogleGenAI({ apiKey });
+  if (!apiKey) {
+    console.error("GEMINI_API_KEY is missing. Set it in your .env file.");
+    console.error("process.env.API_KEY:", process.env.API_KEY);
+    console.error("process.env.GEMINI_API_KEY:", process.env.GEMINI_API_KEY);
+    throw new Error("GEMINI_API_KEY is not configured. Please check your .env file.");
+  }
+
+  console.log("✅ Gemini API Key found:", apiKey.substring(0, 10) + "...");
+  return new GoogleGenAI({ apiKey });
+};
 
 const ANALYSIS_SCHEMA = {
   type: Type.OBJECT,
@@ -68,8 +75,9 @@ export const generateCryptoAnalysis = async (
   `;
 
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: fullPrompt,
       config: {
         responseMimeType: "application/json",
@@ -80,20 +88,53 @@ export const generateCryptoAnalysis = async (
     });
 
     // Extract text safely for different SDK response shapes
-    const rawText =
-      (typeof response.text === "function" ? response.text() : response.text) ||
-      response.response?.candidates?.[0]?.content?.parts
-        ?.map((p: any) => p.text || "")
-        .join("") ||
-      "";
+    let rawText = "";
 
-    if (!rawText) throw new Error("No response from Gemini");
+    // Try different ways to extract the response text
+    if (typeof response.text === "function") {
+      rawText = response.text();
+    } else if (response.text) {
+      rawText = response.text;
+    } else if (response.response?.text) {
+      rawText = typeof response.response.text === "function"
+        ? response.response.text()
+        : response.response.text;
+    } else if (response.response?.candidates?.[0]?.content?.parts) {
+      rawText = response.response.candidates[0].content.parts
+        .map((p: any) => p.text || "")
+        .join("");
+    }
 
-    return JSON.parse(rawText) as AnalysisResult;
-  } catch (error) {
+    if (!rawText) {
+      console.error("Full response:", JSON.stringify(response, null, 2));
+      throw new Error("No response text from Gemini");
+    }
+
+    const parsed = JSON.parse(rawText) as AnalysisResult;
+
+    // Validate the response has required fields
+    if (!parsed.summary || parsed.sentimentScore === undefined || !parsed.keyInsights || !parsed.recommendation) {
+      throw new Error("Invalid response format from Gemini");
+    }
+
+    return parsed;
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
+
+    // Handle quota exceeded errors
+    if (error.status === "RESOURCE_EXHAUSTED" || error.message?.includes("quota")) {
+      throw new Error(
+        "⚠️ Gemini API quota exceeded. Please wait a few minutes or get a new API key from https://aistudio.google.com/app/apikey"
+      );
+    }
+
+    // Handle invalid API key
+    if (error.message?.includes("API key") || error.status === "PERMISSION_DENIED") {
+      throw new Error("Invalid Gemini API key. Please check your .env file.");
+    }
+
     throw new Error(
-      "Failed to generate analysis. Please check your Gemini API key and try again."
+      error.message || "Failed to generate analysis. Please try again."
     );
   }
 };

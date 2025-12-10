@@ -29,7 +29,7 @@ const CryptoWidget: React.FC<CryptoWidgetProps> = ({ data, cryptos, loading, onR
   const displayCryptos = Object.keys(data).filter(id => data[id]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative z-10">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white">Market Overview</h2>
         <button
@@ -43,7 +43,7 @@ const CryptoWidget: React.FC<CryptoWidgetProps> = ({ data, cryptos, loading, onR
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 relative z-10">
         {displayCryptos.map((cryptoId) => {
           const price = data[cryptoId]?.usd || 0;
           const info = getCryptoInfo(cryptoId);
