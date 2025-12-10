@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-// import { onAuthStateChanged } from 'firebase/auth'; // Removed broken import
-import { onAuthStateChanged } from './services/storageService'; // Use mock implementation
+import { onAuthStateChanged } from './services/storageService';
 import { auth } from './services/firebase';
 import Layout from './components/Layout';
 import Auth from './components/Auth';
@@ -17,26 +16,34 @@ const App: React.FC = () => {
   const [reusePrompt, setReusePrompt] = useState<string>('');
 
   useEffect(() => {
-    // Real-time listener for Auth state using the mock service
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
-      if (firebaseUser) {
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
-        });
-        // If we are on the Auth screen and user is detected, move to Dashboard
-        if (currentRoute === AppRoute.AUTH) {
-            setCurrentRoute(AppRoute.DASHBOARD);
+    // Real-time listener for Auth state using Firebase
+    let unsubscribe: (() => void) | undefined;
+    
+    try {
+      unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+        console.log('Auth state changed:', user ? `Logged in as ${user.email}` : 'Logged out');
+        if (user) {
+          setUser(user);
+          // If we are on the Auth screen and user is detected, move to Dashboard
+          if (currentRoute === AppRoute.AUTH) {
+              setCurrentRoute(AppRoute.DASHBOARD);
+          }
+        } else {
+          setUser(null);
+          setCurrentRoute(AppRoute.AUTH);
         }
-      } else {
-        setUser(null);
-        setCurrentRoute(AppRoute.AUTH);
-      }
+        setInit(false);
+      });
+    } catch (error) {
+      console.error('Error setting up auth listener:', error);
       setInit(false);
-    });
+    }
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [currentRoute]);
 
   const handleLogin = (newUser: User) => {
@@ -86,6 +93,6 @@ const App: React.FC = () => {
       )}
     </Layout>
   );
-};
+}
 
 export default App;

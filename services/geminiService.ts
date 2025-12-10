@@ -1,9 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CryptoData, AnalysisResult } from "../types";
 
-// Initialize the Gemini client
-// Note: process.env.API_KEY is injected by the environment.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the Gemini client with strong guards
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || "";
+if (!apiKey) {
+  console.error("GEMINI_API_KEY is missing. Set it in your .env file.");
+}
+
+const ai = new GoogleGenAI({ apiKey });
 
 const ANALYSIS_SCHEMA = {
   type: Type.OBJECT,
@@ -34,10 +38,22 @@ export const generateCryptoAnalysis = async (
   userPrompt: string,
   marketData: CryptoData
 ): Promise<AnalysisResult> => {
+  const keys = Object.keys(marketData || {});
+  if (keys.length === 0) {
+    throw new Error("No crypto market data available to analyze.");
+  }
+
   const context = `
     Current Market Data:
-    Bitcoin (BTC): $${marketData.bitcoin.usd}
-    Ethereum (ETH): $${marketData.ethereum.usd}
+    ${keys
+      .map(
+        (k) =>
+          `${k.toUpperCase()}: $${marketData[k]?.usd?.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+          })}`
+      )
+      .join("\n")}
   `;
 
   const fullPrompt = `
@@ -58,16 +74,26 @@ export const generateCryptoAnalysis = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: ANALYSIS_SCHEMA,
-        systemInstruction: "You are a helpful, cautious, and data-driven financial assistant. Always prioritize risk management in your advice.",
+        systemInstruction:
+          "You are a helpful, cautious, and data-driven financial assistant. Always prioritize risk management in your advice.",
       },
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response from Gemini");
-    
-    return JSON.parse(text) as AnalysisResult;
+    // Extract text safely for different SDK response shapes
+    const rawText =
+      (typeof response.text === "function" ? response.text() : response.text) ||
+      response.response?.candidates?.[0]?.content?.parts
+        ?.map((p: any) => p.text || "")
+        .join("") ||
+      "";
+
+    if (!rawText) throw new Error("No response from Gemini");
+
+    return JSON.parse(rawText) as AnalysisResult;
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw new Error("Failed to generate analysis. Please try again.");
+    throw new Error(
+      "Failed to generate analysis. Please check your Gemini API key and try again."
+    );
   }
 };

@@ -7,6 +7,24 @@ export interface User {
 export interface CryptoData {
   bitcoin: { usd: number };
   ethereum: { usd: number };
+  [key: string]: { usd: number };
+}
+
+export interface CryptoInfo {
+  id: string;
+  symbol: string;
+  name: string;
+  image: string;
+  current_price: number;
+  price_change_percentage_24h: number;
+  market_cap: number;
+  total_volume: number;
+}
+
+export interface CryptoPriceHistory {
+  prices: [number, number][]; // [timestamp, price]
+  market_caps: [number, number][];
+  total_volumes: [number, number][];
 }
 
 export interface AnalysisResult {
